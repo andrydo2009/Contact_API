@@ -1,6 +1,9 @@
 package com.example.application.views.list;
 
+
 import com.example.application.data.Contact;
+import com.example.application.services.CrmService;
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -12,61 +15,66 @@ import com.vaadin.flow.router.Route;
 
 @Route(value = "")
 @PageTitle("Contacts | Vaadin CRM")
-public class ListView extends VerticalLayout { // 1
-    Grid<Contact> grid = new Grid<>(Contact.class); //2
+public class ListView extends VerticalLayout {
+    Grid<Contact> grid = new Grid<>(Contact.class);
     TextField filterText = new TextField();
+    ContactForm form;
+    CrmService service;
 
-    public ListView() {
-        addClassName("list-view"); //10
+    public ListView(CrmService service) { //1
+        this.service = service;
+        addClassName("list-view");
         setSizeFull();
-        configureGrid(); //3
+        configureGrid();
+        configureForm();
 
-        add(getToolbar(), grid); //4
+        add(getToolbar(), getContent());
+        updateList(); //2
+    }
+
+    private Component getContent() {
+        HorizontalLayout content = new HorizontalLayout(grid, form);
+        content.setFlexGrow(2, grid);
+        content.setFlexGrow(1, form);
+        content.addClassNames("content");
+        content.setSizeFull();
+        return content;
+    }
+
+    private void configureForm() {
+        form = new ContactForm(service.findAllCompanies(), service.findAllStatuses()); //3
+        form.setWidth("25em");
     }
 
     private void configureGrid() {
-        grid.addClassNames("contact-grid"); //10
+        grid.addClassNames("contact-grid");
         grid.setSizeFull();
-        grid.setColumns("firstName", "lastName", "email"); //5
-        grid.addColumn(contact -> contact.getStatus().getName()).setHeader("Status"); //6
+        grid.setColumns("firstName", "lastName", "email");
+        grid.addColumn(contact -> contact.getStatus().getName()).setHeader("Status");
         grid.addColumn(contact -> contact.getCompany().getName()).setHeader("Company");
-        grid.getColumns().forEach(col -> col.setAutoWidth(true)); //7
+        grid.getColumns().forEach(col -> col.setAutoWidth(true));
     }
 
     private HorizontalLayout getToolbar() {
         filterText.setPlaceholder("Filter by name...");
         filterText.setClearButtonVisible(true);
-        filterText.setValueChangeMode(ValueChangeMode.LAZY); //8
+        filterText.setValueChangeMode(ValueChangeMode.LAZY);
+        filterText.addValueChangeListener(e -> updateList()); //4
 
         Button addContactButton = new Button("Add contact");
 
-        var toolbar = new HorizontalLayout(filterText, addContactButton); //9
-        toolbar.addClassName("toolbar"); //10
+        var toolbar = new HorizontalLayout(filterText, addContactButton);
+        toolbar.addClassName("toolbar");
         return toolbar;
     }
+
+    private void updateList() { //5
+        grid.setItems(service.findAllContacts(filterText.getValue()));
+    }
 }
-/* 1 Представление расширяет VerticalLayout, который размещает все дочерние компоненты вертикально.
-   2 Компонент Grid набирается с помощью Contact.
-   3 Конфигурация сетки извлекается в отдельный метод, чтобы конструктор был легче читаемым.
-   4 Добавьте панель инструментов и сетку в VerticalLayout.
-   5 Определите, какие свойства Contact должна отображаться сеткой.
-   6 Определите пользовательские столбцы для вложенных объектов.
-   7 Настройте столбцы, чтобы они автоматически настраивались в соответствии с их содержимым.
-   8 Настройте поле поиска так, чтобы зажечь события изменения значения только тогда, когда пользователь перестает печатать. Таким образом, вы избегаете ненужных вызовов базы данных, но слушатель все равно запускается, не покидая фокус пользователя из поля.
-   9 Панель инструментов использует HorizontalLayout для размещения TextField и Button рядом друг с другом.
-   10 Добавление некоторых имен классов в компоненты облегчает стилизацию приложения позже с помощью CSS.
-*/
-
 /*
-* Метод setSizeFull() задает полный размер компонента в Vaadin,
-* растягивая его на всю доступную область. В приведенном коде это реализовано путем установки ширины
-* и высоты компонента на "100%" с помощью методов setWidth() и setHeight().
-* Обычно этот метод вызывается для контейнеров (Container),
-* таких, как VerticalLayout, HorizontalLayout, GridLayout и других,
-* чтобы занять всю доступную область в родительском компоненте.
- */
-
-/*
-Установка autoWidth для столбца в значении true означает,
-что ширина столбца будет автоматически настраиваться в зависимости от содержимого ячеек в этом столбце.
- */
+* 1 Autowire CrmService через конструктор. Сохраните его в поле, чтобы иметь к нему доступ другими способами.
+* 2 Вызовите updateList() после создания представления.
+* 3 Используйте сервис для получения компаний и статусов.
+* 4 Вызывайте updateList() каждый раз при изменении фильтра.
+* 5 updateList()устанавливает элементы сетки, вызывая службу со значением из текстового поля фильтра.*/
